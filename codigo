@@ -1,0 +1,311 @@
+from tkinter import ttk
+import tkinter as tk
+from tkinter import *
+import pandas as pd
+from datetime import datetime as dt
+from datetime import date
+from tkinter import messagebox
+import sqlite3
+import requests
+import json
+
+lista_defeitos = (
+    'componente invertido', 'placa raspada', 'excesso de solda', 'componente faltando', 'insuficiencia de solda',
+    'Nenhuma das escolhas', 'nenhum dos defeitos listaados'
+    )
+setores = (
+    'SMD', 'PTH', 'Manutenção'
+)
+
+linkusuarios = 'https://controle-de-defeito-desktop-default-rtdb.firebaseio.com/Usuarios'
+
+def criar_conta():
+    print('cadastrar')
+    janela_cadstro = tk.Toplevel()
+    janela_cadstro.title('Cadastro de Defeitos')
+    janela_cadstro.configure(background='#D0CECE')
+    janela_cadstro.geometry('600x400')
+    janela_cadstro.iconbitmap('dada.ico')
+    janela_cadstro.resizable(width=False, height=False)
+    janela_cadstro.rowconfigure([1, 3, 5, 7, 9, 11], weight=1)
+    janela_cadstro.columnconfigure([0, 1, 3], weight=1)
+    janela_cadstro.transient(janela1)
+    janela_cadstro.focus_force()
+    janela_cadstro.grab_set()
+
+    email = StringVar()
+    senhastr = StringVar()
+    nomestr = StringVar()
+
+    usuario_novo = tk.Label(janela_cadstro, text='Escolha seu nome de usuario', font='Calibri', background='#D0CECE')
+    usuario_novo.grid(row=1, column=1)
+    senha_nova = tk.Label(janela_cadstro, text='Crie uma senha', font='Calibri', background='#D0CECE')
+    senha_nova.grid(row=5, column=1)
+    email_usuario = tk.Label(janela_cadstro, text='Seu e-mail', font='Calibri', background='#D0CECE')
+    email_usuario.grid(row=8, column=1)
+
+    escreva_usuario_novo = tk.Entry(janela_cadstro, background='#FFFFFF', textvariable=nomestr)
+    escreva_usuario_novo.grid(row=3, column=1)
+    escreva_senha_novo = tk.Entry(janela_cadstro, background='#FFFFFF', show='*', textvariable=senhastr)
+    escreva_senha_novo.grid(row=7, column=1)
+    escreva_email = tk.Entry(janela_cadstro, background='#FFFFFF', textvariable=email)
+    escreva_email.grid(row=9, column=1)
+
+    # msg oculta
+    aviso3 = tk.Label(janela_cadstro, text='', bg='#D0CECE', fg='#C00000')
+    aviso3.grid(row=9, column=1)
+    aviso4 = tk.Label(janela_cadstro, text='', bg='#D0CECE', fg='#C00000')
+    aviso4.grid(row=10, column=1)
+
+    def cadastrar_nova_conta():
+        link = 'https://controle-de-defeito-desktop-default-rtdb.firebaseio.com/'
+
+        cadastros_dados_do_usuarios = { 'usuarioEmail': escreva_email.get(), 'usuarioNome': escreva_usuario_novo.get(),
+                                       'usuarioSenha': escreva_senha_novo.get()}
+        requisicao = requests.post(f'{link}/Usuarios/.json', data=json.dumps(cadastros_dados_do_usuarios))
+
+        escreva_email.delete(0, 'end')
+        escreva_usuario_novo.delete(0, 'end')
+        escreva_senha_novo.delete(0, 'end')
+
+        print(requisicao)
+        print(requisicao.text)
+
+    cadastrar = tk.Button(janela_cadstro, text='Cadastrar', command=cadastrar_nova_conta)
+    cadastrar.grid(row=12, column=1)
+usuariosdados = requests.get(f'{linkusuarios}/.json')
+dic_usuariosdados = usuariosdados.json()
+def criartabela():
+    conexao = sqlite3.connect('cadastro_defeitos.db')
+    cur = conexao.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS defeitos (
+            Data text,
+            Hora text,
+            Usuario logado text,
+            Operador text,
+            Setor text,
+            Defeito text,
+            Referencia text,
+            Quem produziu o defeito text,
+            Obervação text
+        );
+    ''')
+    conexao.commit()
+
+    conexao.close()
+def abrir_janela():
+    if escreva_usuario.get() == '' or escreva_senha.get() == '':
+        messagebox.showerror('ATENÇÃO', 'digite todos os campos de login')
+    elif escreva_usuario.get() not in dic_usuariosdados['usuarioNome'] or escreva_senha.get() not in dic_usuariosdados['usuarioSenha']:
+        aviso['text'] = 'Usuario ou senha incorretos'
+        aviso2['text'] = 'tente denovo!'
+    else:
+        criartabela()
+        usuario_texto = escreva_usuario.get()
+        escreva_usuario.delete(0, 'end')
+        escreva_senha.delete(0, 'end')
+        janela = tk.Toplevel()
+        janela.title('Cadastro de Defeitos')
+        janela.configure(background='#D0CECE')
+        janela.geometry('600x400')
+        janela1.iconbitmap('dada.ico')
+        janela.resizable(width=False, height=False)
+        janela.rowconfigure([1, 3, 5, 7, 9, 11], weight=1)
+        janela.columnconfigure([0, 1, 3], weight=1)
+        janela.transient(janela1)
+        janela.focus_force()
+        janela.grab_set()
+
+
+        def exportar():
+
+            conexao = sqlite3.connect('cadastro_defeitos.db')
+            cur = conexao.cursor()
+
+            cur.execute('SELECT *, oid FROM defeitos')
+
+            defeitos_cadastrados = cur.fetchall()
+
+            defeitos_cadastrados = pd.DataFrame(defeitos_cadastrados, columns=['Data', 'Hora','Usuario logado', 'Operador', 'Setor', 'Defeito', 'Referencia', 'Quem produziu o defeito', 'Obervação', 'Id_banco'])
+            defeitos_cadastrados.to_excel('tabela defeitos cadastrados.xlsx')
+
+            conexao.commit()
+
+            conexao.close()
+
+        def logarnovamente():
+            janela.destroy()
+
+        def semcomando():
+            pass
+        def sair():
+            janela.quit()
+        barra_de_menu = Menu(janela)
+        menu_inicio = Menu(barra_de_menu, tearoff=0)
+        menu_inicio.add_command(label='login', command=logarnovamente)
+        menu_inicio.add_command(label='defeitos do dia', command=semcomando)
+        menu_inicio.add_separator()
+        menu_inicio.add_command(label='sair', command=sair)
+        barra_de_menu.add_cascade(label='ajuda', menu=menu_inicio)
+
+        menu_exportar = Menu(barra_de_menu, tearoff=0)
+        menu_exportar.add_command(label='enviar produção', command=exportar)
+        barra_de_menu.add_cascade(label='Produção', menu=menu_exportar)
+
+        janela.config(menu=barra_de_menu)
+
+        hoje = date.today()
+        data_auto = hoje.strftime('%d/%m/%Y')
+        agora = dt.now()
+
+        apagar1 = StringVar()
+        apagar2 = StringVar()
+        apagar3 = StringVar()
+        apagar4 = StringVar()
+        apagar5 = StringVar()
+        setor_apagar = StringVar()
+        escolhas_apagar = StringVar()
+
+        def cadastrar():
+            if escre_colaborador.get() == '' or escolhas_def.get() == '' or escre_referencia.get() == '' or escre_gerador.get() == '':
+                msg_vaz7['text'] = 'Preencha todos os campos obrigatorios'
+            elif escre_colaborador.get().isnumeric() or escolhas_def.get().isnumeric() or escre_gerador.get().isnumeric() or escre_obs.get().isnumeric():
+                msg_vaz7['text'] = 'Atenção você preencheu incorretamente alguns campos'
+            else:
+                hora_formatada = agora.strftime('%H:%M')
+
+                conexao = sqlite3.connect('cadastro_defeitos.db')
+                cur = conexao.cursor()
+
+                cur.execute(
+                    "INSERT INTO defeitos VALUES (:Data, :Hora, :Usuario_logado, :Operador, :Setor, :Defeito, :Referencia, :Quem_produziu_o_defeito, :Obervação)",
+                    {
+                        'Data': data_auto,
+                        'Hora': hora_formatada,
+                        'Usuario_logado': usuario_texto,
+                        'Operador': escre_colaborador.get(),
+                        'Setor' : setor.get(),
+                        'Defeito': escolhas_def.get(),
+                        'Referencia': escre_referencia.get(),
+                        'Quem_produziu_o_defeito': escre_gerador.get(),
+                        'Obervação': escre_obs.get()
+                    }
+                )
+                # conexao.commit()
+                #
+                #
+                #
+                ####banco de dados googlefirebase####
+
+                link = 'https://controle-de-defeito-desktop-default-rtdb.firebaseio.com/'
+
+                link = 'https://controle-de-defeito-desktop-default-rtdb.firebaseio.com/'
+
+                # criar
+                conexao = sqlite3.connect('cadastro_defeitos.db')
+                dados = {'Defeito': escolhas_def.get(), 'Gerador_do_erro': escre_gerador.get(), 'Observação':
+                    escre_obs.get(), 'Operador': escre_colaborador.get(), 'Referencia': escre_referencia.get(),
+                         'Setor': setor.get(), 'data': data_auto, 'hora': hora_formatada}
+                requisicao = requests.post(f'{link}/Defeitos/.json', data=json.dumps(dados))
+                print(requisicao)
+                print(requisicao.text)
+
+                conexao.close()
+
+                escre_colaborador.delete(0, 'end')
+                escolhas_def.delete(0, 'end')
+                escre_referencia.delete(0, 'end')
+                escre_gerador.delete(0, 'end')
+                escre_obs.delete(0, 'end')
+
+        # infos
+        nome_app = tk.Label(janela, text='CADASTRO DE DEFEITOS', bg='#D0CECE', font='Calibri 11')
+        nome_app.grid(row=0, column=1, columnspan=2)
+        msg_colaborador = tk.Label(janela, text='Colaborador', bg='#D0CECE', font='Calibri 11')
+        msg_colaborador.grid(row=2, column=0)
+        msg_setor = tk.Label(janela, text='Setor', bg='#D0CECE', font='Calibri 11')
+        msg_setor.grid(row=4, column=0)
+        msg_defeito = tk.Label(janela, text='Defeito', bg='#D0CECE', font='Calibri 11')
+        msg_defeito.grid(row=6, column=0)
+        msg_ref = tk.Label(janela, text='Referencia', bg='#D0CECE', font='Calibri 11')
+        msg_ref.grid(row=8, column=0)
+        msg_gerador = tk.Label(janela, text='Gerador do erro', bg='#D0CECE', font='Calibri 11')
+        msg_gerador.grid(row=10, column=0)
+        msg_obs = tk.Label(janela, text='Obervação', bg='#D0CECE', font='Calibri 11')
+        msg_obs.grid(row=12, column=0)
+
+        # infos de espaços
+
+        msg_vaz1 = tk.Label(janela, text='', bg='#D0CECE')
+        msg_vaz1.grid(row=1, column=0)
+        msg_vaz2 = tk.Label(janela, text='', bg='#D0CECE')
+        msg_vaz2.grid(row=3, column=0)
+        msg_vaz3 = tk.Label(janela, text='', bg='#D0CECE')
+        msg_vaz3.grid(row=5, column=0)
+        msg_vaz4 = tk.Label(janela, text='', bg='#D0CECE')
+        msg_vaz4.grid(row=7, column=0)
+        msg_vaz5 = tk.Label(janela, text='', bg='#D0CECE')
+        msg_vaz5.grid(row=9, column=0)
+        msg_vaz6 = tk.Label(janela, text='', bg='#D0CECE')
+        msg_vaz6.grid(row=11, column=0)
+        msg_vaz7 = tk.Label(janela, text='', bg='#D0CECE', fg='#C00000')
+        msg_vaz7.grid(row=13, column=0)
+
+        # inputs
+        escre_colaborador = tk.Entry(janela, textvariable=apagar1, bg='#FFFFFF')
+        escre_colaborador.grid(row=2, column=3, columnspan=2)
+        setor = ttk.Combobox(janela, textvariable=setor_apagar, bg='#FFFFFF')
+        setor['values'] = setores
+        setor.current()
+        setor.grid(row=4,column=3)
+        escolhas_def = ttk.Combobox(janela, textvariable=escolhas_apagar, bg='#FFFFFF')
+        escolhas_def['values'] = lista_defeitos
+        escolhas_def.current()
+        escolhas_def.grid(row=6, column=3)
+        escre_referencia = tk.Entry(janela, textvariable=apagar3, bg='#FFFFFF')
+        escre_referencia.grid(row=8, column=3, columnspan=2)
+        escre_gerador = tk.Entry(janela, textvariable=apagar4, bg='#FFFFFF')
+        escre_gerador.grid(row=10, column=3, columnspan=2)
+        escre_obs = tk.Entry(janela, textvariable=apagar5, bg='#FFFFFF')
+        escre_obs.grid(row=12, column=3, columnspan=2)
+
+        # botão
+        botao_confirm = tk.Button(janela, text='CADASTRAR', command=cadastrar, font='Calibri 11', bg='#C00000',
+                                  fg='white')
+        botao_confirm.grid(row=14, column=1)
+
+
+janela1 = tk.Tk()
+
+janela1.title('Login Cadastro de Defeitos')
+janela1.configure(background='#D0CECE')
+janela1.geometry('600x400')
+janela1.iconbitmap('dada.ico')
+janela1.resizable(width=False, height=False)
+janela1.rowconfigure([1, 3, 5, 7, 9, 11], weight=1)
+janela1.columnconfigure([0, 1, 3], weight=1)
+
+usuario = tk.Label(janela1, text='Usuario', font='Calibri', background='#D0CECE')
+usuario.grid(row=1, column=1)
+senha = tk.Label(janela1, text='Senha', font='Calibri', background='#D0CECE')
+senha.grid(row=5, column=1)
+
+escreva_usuario = tk.Entry(janela1, background='#FFFFFF')
+escreva_usuario.grid(row=3, column=1)
+escreva_senha = tk.Entry(janela1, background='#FFFFFF', show='*')
+escreva_senha.grid(row=7, column=1)
+
+
+# msg oculta
+aviso = tk.Label(janela1, text='', bg='#D0CECE', fg='#C00000')
+aviso.grid(row=9, column=1)
+aviso2 = tk.Label(janela1, text='', bg='#D0CECE', fg='#C00000')
+aviso2.grid(row=10, column=1)
+
+abrir_programa = tk.Button(janela1, text='Login', command=abrir_janela)
+abrir_programa.grid(row=11, column=1)
+nova_conta = tk.Button(janela1, text='Cadastrar', command=criar_conta)
+nova_conta.grid(row=13, column=1)
+
+janela1.mainloop()
